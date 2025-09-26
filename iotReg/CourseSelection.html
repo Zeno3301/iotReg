@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Выбор дисциплины</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+  <div class="container py-5">
+    <h2 class="mb-4">Выберите дисциплину</h2>
+    <form id="disciplineForm">
+      <div id="radioGroup" class="mb-4">
+        <div class="text-muted">Загрузка данных...</div>
+      </div>
+      <button type="submit" class="btn btn-primary">Отправить выбор</button>
+      <button type="button" class="btn btn-info ms-2" id="showDescription" data-bs-toggle="modal" data-bs-target="#courseModal">
+        Описание курса
+      </button>
+    </form>
+    <div id="result" class="mt-4"></div>
+  </div>
+
+  <!-- 🧾 Модальное окно -->
+  <div class="modal fade" id="courseModal" tabindex="-1" aria-labelledby="courseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="courseModalLabel">Аннотация курса</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        </div>
+        <div class="modal-body" id="courseDescription">
+          Загрузка описания...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const apiUrl = "https://anketa.svfu.ru/www/iot/iotreg/api/";
+    const radioGroup = document.getElementById("radioGroup");
+    let courseMap = {}; // для хранения соответствия КодВыбора → idonline
+
+    // Загрузка дисциплин
+    fetch(apiUrl)
+      .then(response => response.json())
+      .then(data => {
+        radioGroup.innerHTML = "";
+        data.data.forEach((item, index) => {
+          courseMap[item.КодВыбора] = item.idonline;
+
+          const div = document.createElement("div");
+          div.className = "form-check";
+
+          const input = document.createElement("input");
+          input.className = "form-check-input";
+          input.type = "radio";
+          input.name = "discipline";
+          input.id = "radio" + index;
+          input.value = item.КодВыбора;
+
+          const label = document.createElement("label");
+          label.className = "form-check-label";
+          label.htmlFor = input.id;
+          label.textContent = item.Дисциплина;
+
+          div.appendChild(input);
+          div.appendChild(label);
+          radioGroup.appendChild(div);
+        });
+      })
+      .catch(error => {
+        radioGroup.innerHTML = `<div class="alert alert-danger">Ошибка загрузки данных: ${error}</div>`;
+      });
+
+    // Обработка формы
+    document.getElementById("disciplineForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const selected = document.querySelector('input[name="discipline"]:checked');
+      const resultDiv = document.getElementById("result");
+
+      if (selected) {
+        resultDiv.innerHTML = `<div class="alert alert-success">Вы выбрали: <strong>${selected.value}</strong></div>`;
+      } else {
+        resultDiv.innerHTML = `<div class="alert alert-danger">Пожалуйста, выберите дисциплину.</div>`;
+      }
+    });
+
+    // Загрузка аннотации курса по выбранному idonline
+    document.getElementById("showDescription").addEventListener("click", function () {
+      const selected = document.querySelector('input[name="discipline"]:checked');
+      const descriptionDiv = document.getElementById("courseDescription");
+
+      if (!selected) {
+        descriptionDiv.innerHTML = `<div class="alert alert-warning">Сначала выберите дисциплину.</div>`;
+        return;
+      }
+
+      const idonline = courseMap[selected.value];
+      descriptionDiv.innerHTML = "Загрузка описания...";
+
+      fetch("https://online.s-vfu.ru/getinfo.php?id=" + idonline)
+        .then(response => response.text())
+        .then(text => {
+		  console.log(idonline);
+          descriptionDiv.innerHTML = `<div>${text}</div>`;
+        })
+        .catch(error => {
+          descriptionDiv.innerHTML = `<div class="alert alert-danger">Не удалось загрузить описание: ${error}</div>`;
+        });
+    });
+  </script>
+</body>
+</html>
